@@ -53,6 +53,7 @@ class CLIPVisionCfg:
     timm_drop: float = 0.  # head dropout
     timm_drop_path: Optional[float] = None  # backbone stochastic depth
 
+    shallow_visual_prompt_tokens: int = 0  # number of visual prompt tokens to add to the input
 
 @dataclass
 class CLIPTextCfg:
@@ -165,6 +166,7 @@ def _build_vision_tower(
             output_dim=embed_dim,
             act_layer=act_layer,
             norm_layer=norm_layer,
+            shallow_visual_prompt_tokens=vision_cfg.shallow_visual_prompt_tokens,
         )
 
     return visual

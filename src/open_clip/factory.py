@@ -193,6 +193,7 @@ def create_model(
         cache_dir: Optional[str] = None,
         output_dict: Optional[bool] = None,
         require_pretrained: bool = False,
+        shallow_visual_prompt_tokens = 0,
         **model_kwargs,
 ):
     force_preprocess_cfg = force_preprocess_cfg or {}
@@ -228,6 +229,8 @@ def create_model(
         else:
             logging.error(f'Model config for {model_name} not found; available models {list_models()}.')
             raise RuntimeError(f'Model config for {model_name} not found.')
+
+        model_cfg["vision_cfg"]["shallow_visual_prompt_tokens"] = shallow_visual_prompt_tokens
 
         if force_quick_gelu:
             # override for use of QuickGELU on non-OpenAI transformer models
@@ -290,6 +293,7 @@ def create_model(
         else:
             model.to(device=device)
 
+        strict = False   # otherwise, shallow prompt tokens make the model incompatible with the pretrained one
         pretrained_loaded = False
         if pretrained:
             checkpoint_path = ''
@@ -302,7 +306,7 @@ def create_model(
 
             if checkpoint_path:
                 logging.info(f'Loading pretrained {model_name} weights ({pretrained}).')
-                load_checkpoint(model, checkpoint_path)
+                load_checkpoint(model, checkpoint_path, strict=strict)
             else:
                 error_str = (
                     f'Pretrained weights ({pretrained}) not found for model {model_name}.'
@@ -312,7 +316,7 @@ def create_model(
             pretrained_loaded = True
         elif has_hf_hub_prefix:
             logging.info(f'Loading pretrained {model_name} weights ({checkpoint_path}).')
-            load_checkpoint(model, checkpoint_path)
+            load_checkpoint(model, checkpoint_path, strict=strict)
             pretrained_loaded = True
 
         if require_pretrained and not pretrained_loaded:
@@ -444,6 +448,7 @@ def create_model_from_pretrained(
         image_resize_mode: Optional[str] = None,  # only effective for inference
         return_transform: bool = True,
         cache_dir: Optional[str] = None,
+        shallow_visual_prompt_tokens = 0,
         **model_kwargs,
 ):
     force_preprocess_cfg = merge_preprocess_kwargs(
@@ -461,6 +466,7 @@ def create_model_from_pretrained(
         force_preprocess_cfg=force_preprocess_cfg,
         cache_dir=cache_dir,
         require_pretrained=True,
+        shallow_visual_prompt_tokens=shallow_visual_prompt_tokens,
         **model_kwargs,
     )
 

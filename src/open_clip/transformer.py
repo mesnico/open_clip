@@ -455,6 +455,7 @@ class VisionTransformer(nn.Module):
             act_layer: Callable = nn.GELU,
             norm_layer: Callable = LayerNorm,
             output_tokens: bool = False,
+            shallow_visual_prompt_tokens: int = 0,
     ):
         super().__init__()
         assert pool_type in ('tok', 'avg', 'none')
@@ -464,6 +465,11 @@ class VisionTransformer(nn.Module):
         self.grid_size = (image_height // patch_height, image_width // patch_width)
         self.final_ln_after_pool = final_ln_after_pool  # currently ignored w/ attn pool enabled
         self.output_dim = output_dim
+
+        if shallow_visual_prompt_tokens != 0:
+            self.shallow_visual_prompt_tokens = nn.Parameter(torch.randn(1, shallow_visual_prompt_tokens, width))
+        else:
+            self.shallow_visual_prompt_tokens = None
 
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=width, kernel_size=patch_size, stride=patch_size, bias=False)
 
@@ -614,6 +620,9 @@ class VisionTransformer(nn.Module):
         x = torch.cat([_expand_token(self.class_embedding, x.shape[0]).to(x.dtype), x], dim=1)
         # shape = [*, grid ** 2 + 1, width]
         x = x + self.positional_embedding.to(x.dtype)
+        
+        if self.shallow_visual_prompt_tokens is not None:
+            x = torch.cat([x, self.shallow_visual_prompt_tokens.to(x.dtype).expand(x.shape[0], -1, -1)], dim=1)
 
         x = self.patch_dropout(x)
         x = self.ln_pre(x)
