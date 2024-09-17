@@ -266,10 +266,23 @@ class CLIP(nn.Module):
         features = self.visual(image)
         return F.normalize(features, dim=-1) if normalize else features
 
-    def encode_text(self, text, normalize: bool = False):
+    def encode_text(self, text, features=None, normalize: bool = False):
         cast_dtype = self.transformer.get_cast_dtype()
 
+        if features is not None: 
+            tok_mask = text == self.vocab_size # the token [TOK] have the id equals to the dimension of the vocab
+            text[tok_mask] = 1 # substitute a codificable value by CLIP
+            indices = tok_mask.nonzero()[:,1] # ONLY considering a single face in an image
+            features = features.to(cast_dtype) # ***WARNING*** Lost information on the face features
+
         x = self.token_embedding(text).to(cast_dtype)  # [batch_size, n_ctx, d_model]
+
+        if features is not None:
+        #-------------------------------------------------------------------------------
+            index = indices.unsqueeze(-1).unsqueeze(-1).expand(-1, 1, x.shape[2])
+            #print(x.dtype, features.dtype)
+            x = x.scatter_(1, index, features)
+        #--------------------------------------------------------------------------------
 
         x = x + self.positional_embedding.to(cast_dtype)
         x = self.transformer(x, attn_mask=self.attn_mask)

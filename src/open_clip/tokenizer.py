@@ -148,7 +148,7 @@ class SimpleTokenizer(object):
         vocab = vocab + [v+'</w>' for v in vocab]
         for merge in merges:
             vocab.append(''.join(merge))
-        special_tokens = ['<start_of_text>', '<end_of_text>']
+        special_tokens = ['<start_of_text>', '<end_of_text>', '[TOK]']
         if additional_special_tokens:
             special_tokens += additional_special_tokens
         vocab.extend(special_tokens)
@@ -158,7 +158,7 @@ class SimpleTokenizer(object):
         self.cache = {t:t for t in special_tokens}
         special = "|".join(special_tokens)
         self.pat = re.compile(
-            special + r"""|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
+            r"""<start_of_text>|<end_of_text>|\[TOK\]|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
             re.IGNORECASE,
         )
         self.vocab_size = len(self.encoder)
@@ -214,8 +214,11 @@ class SimpleTokenizer(object):
         bpe_tokens = []
         text = self.clean_fn(text)
         for token in re.findall(self.pat, text):
-            token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
-            bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(' '))
+            if token == '[tok]' or token == '[TOK]':
+                bpe_tokens.append(self.encoder[token.upper()]) # possibile sostituzione con append con extend
+            else:
+                token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
+                bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(' '))
         return bpe_tokens
 
     def decode(self, tokens):
