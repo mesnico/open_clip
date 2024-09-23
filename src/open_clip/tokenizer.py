@@ -435,6 +435,8 @@ class HFTokenizer:
         if isinstance(texts, str):
             texts = [texts]
 
+        texts = [t.replace('[TOK]', self.tokenizer.mask_token) for t in texts]
+
         context_length = context_length or self.context_length
         assert context_length, 'Please set a valid context length in class init or call.'
 

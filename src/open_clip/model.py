@@ -268,11 +268,13 @@ class CLIP(nn.Module):
         features = self.visual(image)
         return F.normalize(features, dim=-1) if normalize else features
 
-    def encode_text(self, text, features=None, normalize: bool = False):
+    def encode_text(self, text, features=None, normalize: bool=False, tok_token_id=None):
         cast_dtype = self.transformer.get_cast_dtype()
 
+        tok_token_id = tok_token_id if tok_token_id is not None else self.vocab_size
+
         if features is not None: 
-            tok_mask = text == self.vocab_size # the token [TOK] have the id equals to the dimension of the vocab
+            tok_mask = text == tok_token_id # the token [TOK] have the id equals to the dimension of the vocab
             text[tok_mask] = 1 # substitute a codificable value by CLIP
             indices = tok_mask.nonzero()[:,1] # ONLY considering a single face in an image
             features = features.to(cast_dtype) # ***WARNING*** Lost information on the face features
