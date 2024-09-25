@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
+import omegaconf
 import torch
 
 from .constants import OPENAI_DATASET_MEAN, OPENAI_DATASET_STD
@@ -260,7 +261,19 @@ def create_model(
             model_cfg['text_cfg']['hf_model_pretrained'] = pretrained_hf and not pretrained
         custom_text = model_cfg.pop('custom_text', False) or force_custom_text or is_hf_model
 
-        model_cfg = dict(model_cfg, **model_kwargs)  # merge cfg dict w/ kwargs (kwargs overrides cfg)
+        def merge_dicts(dict1, dict2):
+            """
+            Recursively merge dict2 into dict1. Only overwrite entries from dict1 
+            if they are redefined in dict2.
+            """
+            for key, value in dict2.items():
+                if key in dict1 and (isinstance(value, dict) or isinstance(value, omegaconf.dictconfig.DictConfig)):
+                    merge_dicts(dict1[key], value)
+                else:
+                    dict1[key] = value
+            return dict1
+
+        model_cfg = merge_dicts(model_cfg, model_kwargs)  # merge cfg dict w/ kwargs (kwargs overrides cfg)
         if custom_text:
             if "multimodal_cfg" in model_cfg:
                 model = CoCa(**model_cfg, cast_dtype=cast_dtype)
